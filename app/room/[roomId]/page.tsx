@@ -1,5 +1,8 @@
 "use client"
 
+import { useUsername } from "@/hooks/use-username";
+import { client } from "@/lib/client";
+import { useMutation } from "@tanstack/react-query";
 import { useParams } from "next/navigation"
 import { useRef, useState } from "react";
 
@@ -14,11 +17,27 @@ export default function ChatRoom(){
     const params = useParams();
     const roomId = params.roomId as string
 
+    const { username } = useUsername();
     const [input, setInput] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
 
     const [copyStatus, setCopyStatus] = useState("COPY");
     const [timeRemaining, setTimeRemaining] = useState<number | null>(50);
+
+
+    const { mutate: sendMessage, isPending } = useMutation({
+        mutationFn: async ({text}: {text: string}) => {
+            await client.messages.post({
+                sender: username, text
+            },
+            {
+                query: {
+                    roomId
+                }
+            }
+        )
+        }
+    })
 
     const copyLink = () => {
         const url = window.location.href
@@ -76,7 +95,7 @@ export default function ChatRoom(){
                     value={input}
                     onKeyDown={(e) => {
                         if (e.key === "Enter" && input.trim()) {
-                            //TODO: send message
+                            sendMessage({ text: input })
                             inputRef.current?.focus()
                         }
                     }}
@@ -87,9 +106,17 @@ export default function ChatRoom(){
                     pl-8 pr-4 text-sm" />
                 </div>
 
-                <button className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:opacity-50
+                <button 
+                onClick={ () => {
+                    sendMessage({ text: input })
+                    inputRef.current?.focus()
+                }}
+                disabled={!input.trim() || isPending} 
+                className="bg-zinc-800 text-zinc-400 px-6 text-sm font-bold hover:text-zinc-200 transition-all disabled:opacity-50
                 disabled:cursor-not-allowed cursor-pointer">SEND</button>
             </div>
         </div>
     </main>
 }
+
+//from 2.16.00
