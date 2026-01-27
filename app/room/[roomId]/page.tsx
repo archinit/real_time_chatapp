@@ -3,8 +3,10 @@
 import { useUsername } from "@/hooks/use-username";
 import { client } from "@/lib/client";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useRef, useState } from "react";
+import { format } from "date-fns";
+import { useRealtime } from "@/lib/realtime-client";
 
 function formatTimeRemaining(seconds: number){
     const mins = Math.floor(seconds / 60);
@@ -17,6 +19,8 @@ export default function ChatRoom(){
     const params = useParams();
     const roomId = params.roomId as string
 
+    const router = useRouter();
+
     const { username } = useUsername();
     const [input, setInput] = useState("");
     const inputRef = useRef<HTMLInputElement>(null);
@@ -24,7 +28,7 @@ export default function ChatRoom(){
     const [copyStatus, setCopyStatus] = useState("COPY");
     const [timeRemaining, setTimeRemaining] = useState<number | null>(50);
 
-    const { data: messages} = useQuery({
+    const { data: messages, refetch} = useQuery({
         queryKey: ["messages", roomId],
         queryFn: async () => {
             const res = await client.messages.get({
@@ -44,6 +48,22 @@ export default function ChatRoom(){
                 }
             }
         )
+
+        setInput("")
+        },
+    })
+
+    useRealtime({
+        channels: [roomId],
+        events: ["chat.message", "chat.destroy"],
+        onData: ({event}) => {
+            if(event === "chat.message") {
+                refetch()
+            }
+
+            if(event === "chat.destroy") {
+                router.push("/?destroyed=true")
+            }
         }
     })
 
@@ -100,9 +120,19 @@ export default function ChatRoom(){
             {messages?.messages.map((msg) => (
                 <div key={msg.id} className="flex flex-col items-start">
                     <div className="max-w-[80%] group">
-                        <div className="flex ">
-                            {/* fr 2.24.00*/}
+                        <div className="flex items-baseline gap-3 mb-1">
+                            <span className={`text-xs font-bold ${msg.sender === username ? "text-green-500" : "text-blue-500"}`}>
+                                {msg.sender === username ? "YOU" : msg.sender}
+                            </span>
+
+                             <span className="text-[10px] text-zinc-500">
+                                {format(msg.timeStamp, "HH:mm")}
+                             </span>
                         </div>
+
+                        <p className="text-sm text-zinc-300 leading-relaxed break-all">
+                            {msg.text}
+                        </p>
                     </div>
                 </div>
             ))}
