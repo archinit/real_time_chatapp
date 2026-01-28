@@ -1,5 +1,5 @@
 import { redis } from '@/lib/redis';
-import { Elysia, t } from 'elysia'
+import { Elysia, } from 'elysia'
 import { nanoid } from 'nanoid';
 import { authMiddleware } from './auth';
 import { z } from 'zod';
@@ -28,6 +28,7 @@ const rooms = new Elysia({ prefix: "/room"})
 }, { query: z.object({ roomId: z.string() }) } 
 )
 .delete("/", async ({ auth }) => {
+    await realtime.channel(auth.roomId).emit("chat.destroy", { isDestroyed:true })
 
     await Promise.all([
         redis.del(auth.roomId),
@@ -35,7 +36,6 @@ const rooms = new Elysia({ prefix: "/room"})
         redis.del(`messages:${auth.roomId}`)
     ])
 
-    await realtime.channel(auth.roomId).emit("chat.destroy", { isDestroyed:true })
     
 })
 const messages = new Elysia({ prefix: 
