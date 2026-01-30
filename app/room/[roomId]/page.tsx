@@ -173,6 +173,7 @@ export default function ChatRoom(){
     {/*MESSAGES PART*/}
         <div 
         ref={messagesContainerRef}
+        
         className={`flex-1 overflow-y-auto p-4 scrollbar-none sm:scrollbar-thin
                   [&::-webkit-scrollbar]:w-0
                   sm:[&::-webkit-scrollbar]:w-1
